@@ -62,7 +62,7 @@ struct Cli {
     verbose: bool,
 
     /// Enable debug output (very verbose mode, imples --verbose)
-    #[arg(short, long, action = ArgAction::SetTrue)]
+    #[arg(short = 'D', long, action = ArgAction::SetTrue)]
     debug: bool,
 
     /// Arguments that will be passed in to `git diff`
@@ -85,11 +85,11 @@ fn main() {
         .with_level(log_level)
         .init()
         .unwrap();
-    trace!("This message will be shown if the level is Trace or lower.");
-    debug!("This message will be shown if the level is Debug or lower.");
-    info!("This message will be shown if the level is Info or lower.");
-    warn!("This message will be shown if the level is Warn or lower.");
-    error!("This message will be shown if the level is Error or lower.");
+    // trace!("This message will be shown if the level is Trace or lower.");
+    // debug!("This message will be shown if the level is Debug or lower.");
+    // info!("This message will be shown if the level is Info or lower.");
+    // warn!("This message will be shown if the level is Warn or lower.");
+    // error!("This message will be shown if the level is Error or lower.");
 
 
     if !cli.remaining_args.is_empty() {
@@ -98,6 +98,10 @@ fn main() {
 
     if cli.verbose {
         println!("Verbose mode enabled.");
+    }
+
+    if cli.debug {
+        println!("Debug mode enabled.");
     }
 
     if let Some(ctx) = &cli.context {
@@ -114,6 +118,7 @@ fn main() {
 
     let mut binding = Command::new("git");
     let command = binding.arg("diff").arg(git_args.trim());
+    debug!("Running command: {:?}", command);
     let output = command.output().expect("");
     let diff_output = &format!("{}", String::from_utf8_lossy(&output.stdout) );
 
@@ -137,7 +142,8 @@ fn main() {
     let char_count = diff_output.len();
     let estimated_tokens = char_count / chars_per_token;
 
-    if estimated_tokens > max_tokens {
+    // if estimated_tokens > max_tokens {
+    if true {
         // Calculate reduced context
         let reduced_context = &cli.unified_context * max_tokens / estimated_tokens;
         let reduced_context = if reduced_context > 0 {
@@ -146,7 +152,7 @@ fn main() {
             1
         };
 
-        info!("Reducing context to $reduced_context lines to fit token limits");
+        info!("Reducing context to {} lines to fit token limits", reduced_context);
 
         // Replace unified context in git args
         let mut new_git_args: Vec<String> = vec![];
@@ -171,19 +177,24 @@ fn main() {
         // diff_output=$(git diff "${new_git_args[@]}" 2>/dev/null || error "Git diff command failed with reduced context.")
         // fi
 
-        // // Re-run git diff with reduced context
-        // let mut command = binding.arg("diff") //.arg(new_git_args.join().trim());
-        // for git_arg in git_args_split.iter() {
-        //     command = command.arg(git_arg);
-        // }
-        // let output = command.output().expect("");
-        // let diff_output = &format!("{}", String::from_utf8_lossy(&output.stdout) );
-
-        // if !output.status.success() {
-        //     println!("Git diff command failed with reduced context:");
-        //     println!("Stderr: {}", String::from_utf8_lossy(&output.stderr));
-        //     process::exit(1);
-        // }
+        // Re-run git diff with reduced context
+        let mut binding2 = Command::new("git");
+        // let mut command = binding2.arg("diff").arg(new_git_args.join().trim());
+        let mut command = binding2.arg("diff"); //.arg(new_git_args.join().trim());
+        let git_args_split: Vec<&str> = git_args.split_whitespace().collect();
+        for git_arg in git_args_split.iter() {
+            command = command.arg(git_arg);
+        }
+        debug!("Running command: {:?}", command);
+        let output = command.output().expect("");
+        let diff_output = &format!("{}", String::from_utf8_lossy(&output.stdout) );
+        println!("diff_output");
+        println!("{}", diff_output);
+        if !output.status.success() {
+            println!("Git diff command failed with reduced context:");
+            println!("Stderr: {}", String::from_utf8_lossy(&output.stderr));
+            process::exit(1);
+        }
     }
 
     // prompt=""
