@@ -3,6 +3,20 @@ use regex::Regex;
 use std::process;
 use std::process::Command;
 
+use simple_logger::SimpleLogger;
+use log::{debug, error, info, trace, warn, LevelFilter}; // Import the logging macros
+/*
+    Rust log levels:
+
+    #[repr(usize)]
+    pub enum Level {
+        Error = 1,
+        Warn = 2,
+        Info = 3,
+        Debug = 4,
+        Trace = 5,
+    }
+*/
 
 const DEFAULT_SYSTEM_PROMPT: &str = "Please review this PR as if you were a senior engineer.
 
@@ -41,11 +55,15 @@ struct Cli {
 
     /// Number of lines given as context to the LLM
     #[arg(short = 'U', long = "unified", default_value_t=10)]
-    unified_context: i32,
+    unified_context: usize,
 
     /// Enable verbose output
     #[arg(short, long, action = ArgAction::SetTrue)]
     verbose: bool,
+
+    /// Enable debug output (very verbose mode, imples --verbose)
+    #[arg(short, long, action = ArgAction::SetTrue)]
+    debug: bool,
 
     /// Arguments that will be passed in to `git diff`
     #[arg(value_name = "remaining_args", allow_hyphen_values = true)]
@@ -54,6 +72,25 @@ struct Cli {
 
 fn main() {
     let cli = Cli::parse();
+
+    let log_level = if cli.verbose {
+        LevelFilter::Info
+    } else if cli.debug {
+        LevelFilter::Trace
+    } else {
+        LevelFilter::Warn
+    };
+
+    SimpleLogger::new()
+        .with_level(log_level)
+        .init()
+        .unwrap();
+    trace!("This message will be shown if the level is Trace or lower.");
+    debug!("This message will be shown if the level is Debug or lower.");
+    info!("This message will be shown if the level is Info or lower.");
+    warn!("This message will be shown if the level is Warn or lower.");
+    error!("This message will be shown if the level is Error or lower.");
+
 
     if !cli.remaining_args.is_empty() {
         println!("Remaining arguments: {:?}", &cli.remaining_args);
@@ -78,54 +115,76 @@ fn main() {
     let mut binding = Command::new("git");
     let command = binding.arg("diff").arg(git_args.trim());
     let output = command.output().expect("");
-    let git_changes = &format!("{}", String::from_utf8_lossy(&output.stdout) );
+    let diff_output = &format!("{}", String::from_utf8_lossy(&output.stdout) );
 
     if !output.status.success() {
         println!("Git diff command failed. Check your arguments:");
         println!("Stderr: {}", String::from_utf8_lossy(&output.stderr));
         process::exit(1);
     }
-    if git_changes.len() == 0 {
+    if diff_output.len() == 0 {
         println!("No changes found to review.");
         process::exit(0);
     }
 
-    // # I wish there were a simple consistent method to count tokens, but there isn't
-    // # as far as I can tell, so we're gonna use a poor estimation and keep safely
-    // # inside the context limit
-    // max_tokens=50000  # Claude's limit is 100k, this should be a safe amount
-    // chars_per_token=4 # simple approximation
+    // I wish there were a simple consistent method to count tokens, but there isn't
+    // as far as I can tell, so we're gonna use a poor estimation and keep safely
+    // inside the context limit
+    let max_tokens = 50_000; // Claude's limit is 100k, this should be a safe amount
+    let chars_per_token = 4; // simple approximation
 
-    // # Estimate token count and reduce context if needed
-    // char_count=${#diff_output}
-    // estimated_tokens=$((char_count / chars_per_token))
+    // Estimate token count and reduce context if needed
+    let char_count = diff_output.len();
+    let estimated_tokens = char_count / chars_per_token;
 
-    // if [[ $estimated_tokens -gt $max_tokens ]]; then
-    // # Calculate reduced context
-    // reduced_context=$((context_value * max_tokens / estimated_tokens))
-    // reduced_context=$((reduced_context > 0 ? reduced_context : 1))
+    if estimated_tokens > max_tokens {
+        // Calculate reduced context
+        let reduced_context = &cli.unified_context * max_tokens / estimated_tokens;
+        let reduced_context = if reduced_context > 0 {
+            reduced_context
+        } else {
+            1
+        };
 
-    // info "Reducing context to $reduced_context lines to fit token limits"
+        info!("Reducing context to $reduced_context lines to fit token limits");
 
-    // # Replace unified context in git args
-    // new_git_args=()
-    // for arg in "${git_args[@]}"; do
-    //     if [[ "$arg" =~ ^-U[0-9]+$ ]]; then
-    //     new_git_args+=("-U$reduced_context")
-    //     elif [[ "$arg" =~ ^--unified=[0-9]+$ ]]; then
-    //     new_git_args+=("--unified=$reduced_context")
-    //     else
-    //     new_git_args+=("$arg")
-    //     fi
-    // done
+        // Replace unified context in git args
+        let mut new_git_args: Vec<String> = vec![];
+        let git_args_split: Vec<&str> = git_args.split_whitespace().collect();
+        for git_arg in git_args_split.iter() {
+            if Regex::new(r"^-U[0-9]+$").unwrap().is_match(git_arg) {
+                new_git_args.push(format!("-U{}", reduced_context));
+            } else if Regex::new(r"^--unified=[0-9]+$").unwrap().is_match(git_arg) {
+                new_git_args.push(format!("--unified={}", reduced_context));
+            } else {
+                new_git_args.push(git_arg.to_string());
+            }
+        }
 
-    // if [[ $((${#diff_output} / chars_per_token)) -gt max_tokens ]]; then
-    //     error "Diff is too large to process even with minimal context. Try reviewing a smaller set of changes."
-    // fi
+        if (diff_output.len()/chars_per_token) > max_tokens {
+            error!("Diff is too large to process even with minimal context. Try reviewing a smaller set of changes.");
+            process::exit(1);
+        }
 
-    // # Re-run git diff with reduced context
-    // diff_output=$(git diff "${new_git_args[@]}" 2>/dev/null || error "Git diff command failed with reduced context.")
-    // fi
+
+        // # Re-run git diff with reduced context
+        // diff_output=$(git diff "${new_git_args[@]}" 2>/dev/null || error "Git diff command failed with reduced context.")
+        // fi
+
+        // // Re-run git diff with reduced context
+        // let mut command = binding.arg("diff") //.arg(new_git_args.join().trim());
+        // for git_arg in git_args_split.iter() {
+        //     command = command.arg(git_arg);
+        // }
+        // let output = command.output().expect("");
+        // let diff_output = &format!("{}", String::from_utf8_lossy(&output.stdout) );
+
+        // if !output.status.success() {
+        //     println!("Git diff command failed with reduced context:");
+        //     println!("Stderr: {}", String::from_utf8_lossy(&output.stderr));
+        //     process::exit(1);
+        // }
+    }
 
     // prompt=""
 
