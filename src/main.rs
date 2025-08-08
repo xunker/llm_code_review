@@ -2,22 +2,22 @@
  * Based on original at
  * https://github.com/llimllib/personal_code/blob/master/homedir/.local/bin/review
 */
-use clap::{Parser, ArgAction};
+use clap::{ArgAction, Parser};
 use regex::Regex;
 use std::process;
 use std::process::Command;
 
-use simple_logger::SimpleLogger;
-use log::{debug, error, info, trace, warn, LevelFilter}; // Import the logging macros
-/*
-    Rust log levels:
+use log::{debug, error, info, trace, warn, LevelFilter};
+use simple_logger::SimpleLogger; // Import the logging macros
+                                 /*
+                                     Rust log levels:
 
-        Error = 1,
-        Warn = 2,
-        Info = 3,
-        Debug = 4,
-        Trace = 5,
-*/
+                                         Error = 1,
+                                         Warn = 2,
+                                         Info = 3,
+                                         Debug = 4,
+                                         Trace = 5,
+                                 */
 
 const DEFAULT_SYSTEM_PROMPT: &str = "Please review this PR as if you were a senior engineer.
 
@@ -101,7 +101,7 @@ struct Cli {
     show_system_prompt: bool,
 
     /// Number of lines given as context to the LLM
-    #[arg(short = 'U', long = "unified", default_value_t=3)]
+    #[arg(short = 'U', long = "unified", default_value_t = 3)]
     unified_context: usize,
 
     /// Enable verbose output
@@ -127,7 +127,7 @@ fn get_git_diff(git_args: &String) -> String {
 
     debug!("Running command: {:?}", command);
     let output = command.output().expect("");
-    let diff_output = format!("{}", String::from_utf8_lossy(&output.stdout) );
+    let diff_output = format!("{}", String::from_utf8_lossy(&output.stdout));
 
     if !output.status.success() {
         error!("Git diff command failed. Check your arguments:");
@@ -153,22 +153,34 @@ fn main() {
         LevelFilter::Warn
     };
 
-    SimpleLogger::new()
-        .with_level(log_level)
-        .init()
-        .unwrap();
+    SimpleLogger::new().with_level(log_level).init().unwrap();
 
     trace!("unified_context: {}", &cli.unified_context);
-    if !cli.remaining_args.is_empty() { trace!("remaining_args: {:?}", &cli.remaining_args); }
-    if cli.verbose { info!("Verbose mode enabled."); }
-    if cli.debug { trace!("Debug mode enabled."); }
+    if !cli.remaining_args.is_empty() {
+        trace!("remaining_args: {:?}", &cli.remaining_args);
+    }
+    if cli.verbose {
+        info!("Verbose mode enabled.");
+    }
+    if cli.debug {
+        trace!("Debug mode enabled.");
+    }
 
     if cli.show_system_prompt {
-        println!("Default System Prompt:\n\n{}", Regex::new(r"(?m)^").unwrap().replace_all(DEFAULT_SYSTEM_PROMPT, "  "));
+        println!(
+            "Default System Prompt:\n\n{}",
+            Regex::new(r"(?m)^")
+                .unwrap()
+                .replace_all(DEFAULT_SYSTEM_PROMPT, "  ")
+        );
         process::exit(0);
     }
 
-    let git_args = &format!("-U{} {}", &cli.unified_context, &cli.remaining_args.join(" "));
+    let git_args = &format!(
+        "-U{} {}",
+        &cli.unified_context,
+        &cli.remaining_args.join(" ")
+    );
 
     let mut diff_output = get_git_diff(git_args);
 
@@ -183,7 +195,10 @@ fn main() {
     let estimated_tokens = char_count / chars_per_token;
 
     if (estimated_tokens > max_tokens) || cli.force_reduced {
-        debug!("estimated_tokens > max_tokens! `{} > {}`. Need to reduce context from {}!", estimated_tokens, max_tokens, &cli.unified_context);
+        debug!(
+            "estimated_tokens > max_tokens! `{} > {}`. Need to reduce context from {}!",
+            estimated_tokens, max_tokens, &cli.unified_context
+        );
 
         // Calculate reduced context
 
@@ -194,7 +209,10 @@ fn main() {
             1
         };
 
-        info!("Reducing context to {} lines to fit token limits", reduced_context);
+        info!(
+            "Reducing context to {} lines to fit token limits",
+            reduced_context
+        );
 
         // Replace unified context in git args
         let mut new_git_args: Vec<String> = vec![];
@@ -209,8 +227,14 @@ fn main() {
             }
         }
 
-        if (diff_output.len()/chars_per_token) > max_tokens {
-            trace!("diff_output.len()/chars_per_token) > max_tokens : `({}/{} == {}) > {}`", diff_output.len(), chars_per_token, diff_output.len()/chars_per_token, max_tokens);
+        if (diff_output.len() / chars_per_token) > max_tokens {
+            trace!(
+                "diff_output.len()/chars_per_token) > max_tokens : `({}/{} == {}) > {}`",
+                diff_output.len(),
+                chars_per_token,
+                diff_output.len() / chars_per_token,
+                max_tokens
+            );
             error!("Diff is too large to process even with minimal context. Try reviewing a smaller set of changes.");
             process::exit(1);
         }
