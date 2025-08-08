@@ -85,7 +85,7 @@ EOF
 
 git_args=()
 has_unified_context=false
-context_value=10
+context_value=3 # used to be 10
 additional_context=""
 system_prompt=""
 output_filename=""

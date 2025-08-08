@@ -54,7 +54,7 @@ struct Cli {
     system_prompt: Option<String>,
 
     /// Number of lines given as context to the LLM
-    #[arg(short = 'U', long = "unified", default_value_t=10)]
+    #[arg(short = 'U', long = "unified", default_value_t=3)]
     unified_context: usize,
 
     /// Enable verbose output
@@ -68,6 +68,27 @@ struct Cli {
     /// Arguments that will be passed in to `git diff`
     #[arg(value_name = "remaining_args", allow_hyphen_values = true)]
     remaining_args: Vec<String>,
+}
+
+fn get_git_diff(git_args: &String) -> String {
+    let mut command_binding = Command::new("git");
+    let command = command_binding.arg("diff").arg(git_args.trim());
+
+    debug!("Running command: {:?}", command);
+    let output = command.output().expect("");
+    let diff_output = format!("{}", String::from_utf8_lossy(&output.stdout) );
+
+    if !output.status.success() {
+        error!("Git diff command failed. Check your arguments:");
+        error!("Stderr: {}", String::from_utf8_lossy(&output.stderr));
+        process::exit(1);
+    }
+    if diff_output.len() == 0 {
+        println!("No changes found to review.");
+        process::exit(0);
+    }
+
+    return diff_output;
 }
 
 fn main() {
@@ -92,45 +113,26 @@ fn main() {
     // error!("This message will be shown if the level is Error or lower.");
 
 
-    if !cli.remaining_args.is_empty() {
-        println!("Remaining arguments: {:?}", &cli.remaining_args);
-    }
+    // if !cli.remaining_args.is_empty() {
+    //     println!("Remaining arguments: {:?}", &cli.remaining_args);
+    // }
 
-    if cli.verbose {
-        println!("Verbose mode enabled.");
-    }
+    if cli.verbose { info!("Verbose mode enabled."); }
+    if cli.debug { info!("Debug mode enabled."); }
 
-    if cli.debug {
-        println!("Debug mode enabled.");
-    }
+    // if let Some(ctx) = &cli.context {
+    //     println!("Context provided: {}", ctx);
+    // }
 
-    if let Some(ctx) = &cli.context {
-        println!("Context provided: {}", ctx);
-    }
+    // if let Some(prompt) = &cli.system_prompt {
+    //     println!("Using system prompt: {}", prompt);
+    // }
 
-    if let Some(prompt) = &cli.system_prompt {
-        println!("Using system prompt: {}", prompt);
-    }
-
-    println!("Using unified_context: {}", &cli.unified_context);
+    // println!("Using unified_context: {}", &cli.unified_context);
 
     let git_args = &format!("-U{} {}", &cli.unified_context, &cli.remaining_args.join(" "));
 
-    let mut binding = Command::new("git");
-    let command = binding.arg("diff").arg(git_args.trim());
-    debug!("Running command: {:?}", command);
-    let output = command.output().expect("");
-    let diff_output = &format!("{}", String::from_utf8_lossy(&output.stdout) );
-
-    if !output.status.success() {
-        println!("Git diff command failed. Check your arguments:");
-        println!("Stderr: {}", String::from_utf8_lossy(&output.stderr));
-        process::exit(1);
-    }
-    if diff_output.len() == 0 {
-        println!("No changes found to review.");
-        process::exit(0);
-    }
+    let mut diff_output = get_git_diff(git_args);
 
     // I wish there were a simple consistent method to count tokens, but there isn't
     // as far as I can tell, so we're gonna use a poor estimation and keep safely
@@ -142,8 +144,8 @@ fn main() {
     let char_count = diff_output.len();
     let estimated_tokens = char_count / chars_per_token;
 
-    // if estimated_tokens > max_tokens {
-    if true {
+    if estimated_tokens > max_tokens {
+    // if true {
         // Calculate reduced context
         let reduced_context = &cli.unified_context * max_tokens / estimated_tokens;
         let reduced_context = if reduced_context > 0 {
@@ -172,54 +174,23 @@ fn main() {
             process::exit(1);
         }
 
-
-        // # Re-run git diff with reduced context
-        // diff_output=$(git diff "${new_git_args[@]}" 2>/dev/null || error "Git diff command failed with reduced context.")
-        // fi
-
         // Re-run git diff with reduced context
-        let mut binding2 = Command::new("git");
-        // let mut command = binding2.arg("diff").arg(new_git_args.join().trim());
-        let mut command = binding2.arg("diff"); //.arg(new_git_args.join().trim());
-        let git_args_split: Vec<&str> = git_args.split_whitespace().collect();
-        for git_arg in git_args_split.iter() {
-            command = command.arg(git_arg);
-        }
-        debug!("Running command: {:?}", command);
-        let output = command.output().expect("");
-        let diff_output = &format!("{}", String::from_utf8_lossy(&output.stdout) );
-        println!("diff_output");
-        println!("{}", diff_output);
-        if !output.status.success() {
-            println!("Git diff command failed with reduced context:");
-            println!("Stderr: {}", String::from_utf8_lossy(&output.stderr));
-            process::exit(1);
-        }
+        diff_output = get_git_diff(git_args);
     }
 
-    // prompt=""
+    let mut prompt = DEFAULT_SYSTEM_PROMPT.to_string();
 
-    // if [[ -n "$system_prompt" ]]; then
-    // prompt="$system_prompt"
-    // else
-    // # use default prompt instead
-    // prompt=$default_system_prompt
-    // fi
+    if let Some(custom_system_prompt) = &cli.system_prompt {
+        prompt = custom_system_prompt.to_string();
+    }
 
-    // # Add the additional context if provided
-    // if [[ -n "$additional_context" ]]; then
-    // prompt="$prompt
+    // Add the additional context if provided
+    if let Some(ctx) = &cli.context {
+        prompt = prompt.to_owned() + &format!("\n## Additional Context\n{}\n", ctx).to_string();
+    }
 
-    // ## Additional Context
-    // $additional_context"
-    // fi
+    let assembled_review_prompt = format!("{}\n\n# PR Code\n\n{}", prompt, diff_output);
 
-    // assembled_review_prompt="$prompt
-
-    // # PR Code
-
-    // $diff_output"
-
-    // echo "$assembled_review_prompt"
+    println!("{}", assembled_review_prompt);
 
 }
