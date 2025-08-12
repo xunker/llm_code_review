@@ -19,64 +19,9 @@ use simple_logger::SimpleLogger; // Import the logging macros
                                          Trace = 5,
                                  */
 
-const DEFAULT_SYSTEM_PROMPT: &str = "Please review this PR as if you were a senior engineer.
+const DEFAULT_SYSTEM_PROMPT: &str = include_str!("rsc/default_system_prompt.txt");
 
-## Focus Areas
-- Architecture and design decisions
-- Potential bugs and edge cases
-- Performance considerations
-- Security implications
-- Code maintainability and best practices
-- Test coverage
-
-## Review Format
-- Start with a brief summary of the PR purpose and changes
-- List strengths of the implementation
-- Identify issues and improvement opportunities (ordered by priority)
-- Provide specific code examples for suggested changes where applicable
-
-Please be specific, constructive, and actionable in your feedback. Output the review in markdown format.";
-
-const REVIEW_EXAMPLES: &str = r#"Review Examples::
-    Review unstaged changes
-        llm_code_review
-
-    Review with additional context
-        llm_code_review --context "Focus your review on possible authentication bypasses"
-
-    Review with context from a file
-        llm_code_review --context "\$(cat PR_DESCRIPTION.md)"
-
-    Set system prompt to be something other than the default
-        llm_code_review --system-prompt "\$(cat .github/copilot-instrunctions.md)"
-        llm_code_review --system-prompt "Review this code. Talk like a pirate."
-
-    Review staged changes
-        llm_code_review --cached
-
-    Review changes between HEAD and main
-        llm_code_review main
-
-    Review changes between two branches
-        llm_code_review main feature-branch
-            OR
-        revillm_code_reviewew main..feature-branch
-
-    Review only changes since branch diverged from main
-        llm_code_review main...feature-branch
-
-    Review a remote branch
-        llm_code_review origin/main..origin/feature-branch
-
-    Limit review to specific files
-        llm_code_review main -- src/components/
-
-    Adjust context lines
-        llm_code_review -U5 main
-
-Dot Notation:
-  - Two dots (A..B): Direct comparison between A and B
-  - Three dots (A...B): Compare common ancestor of A and B with B"#;
+const REVIEW_EXAMPLES: &str = include_str!("rsc/review_examples.txt");
 
 /// Ask an LLM to review code changes. This tool passes arguments directly to 'git diff',
 /// allowing you to use any git diff syntax or options.
