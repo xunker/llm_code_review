@@ -15,6 +15,12 @@ use std::process::{self, Command}; // Import the logging macros
                                            Trace = 5,
                                    */
 
+// I wish there were a simple consistent method to count tokens, but there isn't
+// as far as I can tell, so we're gonna use a poor estimation and keep safely
+// inside the context limit
+const MAX_TOKENS: usize = 50_000; // Claude's limit is 100k, this should be a safe amount
+const CHARS_PER_TOKEN: usize = 4; // simple approximation
+
 pub const DEFAULT_SYSTEM_PROMPT: &str = include_str!("rsc/default_system_prompt.txt");
 
 pub const REVIEW_EXAMPLES: &str = include_str!("rsc/review_examples.txt");
@@ -222,12 +228,6 @@ pub fn run(cli: Cli) {
         process::exit(0);
     }
 
-    // I wish there were a simple consistent method to count tokens, but there isn't
-    // as far as I can tell, so we're gonna use a poor estimation and keep safely
-    // inside the context limit
-    let max_tokens = 50_000; // Claude's limit is 100k, this should be a safe amount
-    let chars_per_token = 4; // simple approximation
-
     let git_args_vec: Vec<String> = vec![
         format!("-U{}", cli.unified_context),
         cli.remaining_args.join(" "),
@@ -240,8 +240,8 @@ pub fn run(cli: Cli) {
         cli.unified_context,
         cli.force_reduced,
         &diff_output,
-        max_tokens,
-        chars_per_token,
+        MAX_TOKENS,
+        CHARS_PER_TOKEN,
     ) {
         diff_output = get_git_diff(&new_args.join(" "));
     }
