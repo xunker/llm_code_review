@@ -111,6 +111,50 @@ pub fn get_git_diff(git_args: &String) -> String {
     return diff_output;
 }
 
+fn reduce_context_if_needed(
+    git_args: &[String],
+    unified_context: usize,
+    force_reduced: bool,
+    diff_output: &str,
+    max_tokens: usize,
+    chars_per_token: usize,
+) -> Option<Vec<String>> {
+    // Estimate token count and reduce context if needed
+    let estimated_tokens = diff_output.len() / chars_per_token;
+
+    if estimated_tokens <= max_tokens && !force_reduced {
+        return None;
+    }
+
+    let reduced_context = (unified_context * max_tokens / estimated_tokens).max(1);
+
+    info!(
+        "Reducing context to {} lines to fit token limits",
+        reduced_context
+    );
+
+    let new_git_args: Vec<String> = git_args
+        .iter()
+        .map(|arg| {
+            if arg.starts_with("-U") {
+                format!("-U{}", reduced_context)
+            } else if arg.starts_with("--unified=") {
+                format!("--unified={}", reduced_context)
+            } else {
+                arg.clone()
+            }
+        })
+        .collect();
+
+    let new_estimated_tokens = diff_output.len() / chars_per_token;
+    if new_estimated_tokens > max_tokens {
+        error!("Diff is too large to process even with minimal context. Try reviewing a smaller set of changes.");
+        process::exit(1);
+    }
+
+    Some(new_git_args)
+}
+
 pub fn run(cli: Cli) {
     let log_level = if cli.verbose {
         LevelFilter::Info
@@ -144,71 +188,28 @@ pub fn run(cli: Cli) {
         process::exit(0);
     }
 
-    let git_args = &format!(
-        "-U{} {}",
-        &cli.unified_context,
-        &cli.remaining_args.join(" ")
-    );
-
-    let mut diff_output = get_git_diff(git_args);
-
     // I wish there were a simple consistent method to count tokens, but there isn't
     // as far as I can tell, so we're gonna use a poor estimation and keep safely
     // inside the context limit
     let max_tokens = 50_000; // Claude's limit is 100k, this should be a safe amount
     let chars_per_token = 4; // simple approximation
 
-    // Estimate token count and reduce context if needed
-    let char_count = diff_output.len();
-    let estimated_tokens = char_count / chars_per_token;
+    let git_args_vec: Vec<String> = vec![
+        format!("-U{}", cli.unified_context),
+        cli.remaining_args.join(" "),
+    ];
 
-    if (estimated_tokens > max_tokens) || cli.force_reduced {
-        debug!(
-            "estimated_tokens > max_tokens! `{} > {}`. Need to reduce context from {}!",
-            estimated_tokens, max_tokens, &cli.unified_context
-        );
+    let mut diff_output = get_git_diff(&git_args_vec.join(" "));
 
-        // Calculate reduced context
-
-        let reduced_context = &cli.unified_context * max_tokens / estimated_tokens;
-        let reduced_context = if reduced_context > 0 {
-            reduced_context
-        } else {
-            1
-        };
-
-        info!(
-            "Reducing context to {} lines to fit token limits",
-            reduced_context
-        );
-
-        // Replace unified context in git args
-        let mut new_git_args: Vec<String> = vec![];
-        let git_args_split: Vec<&str> = git_args.split_whitespace().collect();
-        for git_arg in git_args_split.iter() {
-            if git_arg.starts_with("-U") {
-                new_git_args.push(format!("-U{}", reduced_context));
-            } else if git_arg.starts_with("--unified=") {
-                new_git_args.push(format!("--unified={}", reduced_context));
-            } else {
-                new_git_args.push(git_arg.to_string());
-            }
-        }
-
-        if (diff_output.len() / chars_per_token) > max_tokens {
-            trace!(
-                "diff_output.len()/chars_per_token) > max_tokens : `({}/{} == {}) > {}`",
-                diff_output.len(),
-                chars_per_token,
-                diff_output.len() / chars_per_token,
-                max_tokens
-            );
-            error!("Diff is too large to process even with minimal context. Try reviewing a smaller set of changes.");
-            process::exit(1);
-        }
-
-        // Re-run git diff with reduced context
-        diff_output = get_git_diff(&new_git_args.join(" "));
+    if let Some(new_args) = reduce_context_if_needed(
+        &git_args_vec,
+        cli.unified_context,
+        cli.force_reduced,
+        &diff_output,
+        max_tokens,
+        chars_per_token,
+    ) {
+        diff_output = get_git_diff(&new_args.join(" "));
     }
 
     let mut prompt = DEFAULT_SYSTEM_PROMPT.to_string();
