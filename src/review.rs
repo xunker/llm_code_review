@@ -1,17 +1,18 @@
 use clap::{ArgAction, Parser};
-use regex::Regex;
-use std::process::{self, Command};
+#[allow(unused_imports)]
 use log::{debug, error, info, trace, warn, LevelFilter};
-use simple_logger::SimpleLogger; // Import the logging macros
-                                 /*
-                                     Rust log levels:
+use regex::Regex;
+use simple_logger::SimpleLogger;
+use std::process::{self, Command}; // Import the logging macros
+                                   /*
+                                       Rust log levels:
 
-                                         Error = 1,
-                                         Warn = 2,
-                                         Info = 3,
-                                         Debug = 4,
-                                         Trace = 5,
-                                 */
+                                           Error = 1,
+                                           Warn = 2,
+                                           Info = 3,
+                                           Debug = 4,
+                                           Trace = 5,
+                                   */
 
 pub const DEFAULT_SYSTEM_PROMPT: &str = include_str!("rsc/default_system_prompt.txt");
 
@@ -62,7 +63,13 @@ pub struct Cli {
 
 pub fn get_git_diff(git_args: &String) -> String {
     let mut command_binding = Command::new("git");
-    let command = command_binding.arg("diff").arg(git_args.trim());
+    let command = command_binding.arg("diff");
+
+    // Split git_args by space and append them each to command as arg()
+    let git_args_split: Vec<&str> = git_args.trim().split_whitespace().collect();
+    for git_arg in git_args_split.iter() {
+        command.arg(git_arg);
+    }
 
     debug!("Running command: {:?}", command);
     let output = command.output().expect("");
