@@ -1,5 +1,5 @@
-use clap::{ArgAction, Parser};
 use clap::builder::PossibleValuesParser;
+use clap::{ArgAction, Parser};
 #[allow(unused_imports)]
 use log::{debug, error, info, trace, warn, LevelFilter};
 use regex::Regex;
@@ -217,9 +217,13 @@ pub fn run(cli: Cli) {
     }
 
     // Add instructions about the output format to the end of the main prompt
-    let format = &cli.output_format.as_ref().and_then(|s| OutputFormat::from_str(s));
+    let format = &cli
+        .output_format
+        .as_ref()
+        .and_then(|s| OutputFormat::from_str(s));
     if let Some(output_format) = format {
-        prompt = prompt.to_owned() + &format!("\nOutput the review in {:?} format.\n", output_format).to_string();
+        prompt = prompt.to_owned()
+            + &format!("\nOutput the review in {:?} format.\n", output_format).to_string();
     }
 
     // Add the additional context if provided
