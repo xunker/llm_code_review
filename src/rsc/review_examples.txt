@@ -6,10 +6,10 @@ Review Examples::
         llm_code_review --context "Focus your review on possible authentication bypasses"
 
     Review with context from a file
-        llm_code_review --context "\$(cat PR_DESCRIPTION.md)"
+        llm_code_review --context "$(cat PR_DESCRIPTION.md)"
 
     Set system prompt to be something other than the default
-        llm_code_review --system-prompt "\$(cat .github/copilot-instrunctions.md)"
+        llm_code_review --system-prompt "$(cat .github/copilot-instrunctions.md)"
         llm_code_review --system-prompt "Review this code. Talk like a pirate."
 
     Review staged changes
