@@ -155,6 +155,31 @@ fn reduce_context_if_needed(
     Some(new_git_args)
 }
 
+fn setup_logging(cli: &Cli) {
+    let log_level = if cli.debug {
+        LevelFilter::Trace
+    } else if cli.verbose {
+        LevelFilter::Info
+    } else {
+        LevelFilter::Warn
+    };
+
+    SimpleLogger::new()
+        .with_level(log_level)
+        .init()
+        .unwrap_or_else(|e| {
+            eprintln!("Failed to initialize logger: {}", e);
+            process::exit(1);
+        });
+
+    if cli.verbose {
+        info!("Verbose mode enabled.");
+    }
+    if cli.debug {
+        trace!("Debug mode enabled.");
+    }
+}
+
 fn build_prompt(cli: &Cli, diff: &str) -> String {
     let mut prompt = cli
         .system_prompt
@@ -184,26 +209,7 @@ fn build_prompt(cli: &Cli, diff: &str) -> String {
 }
 
 pub fn run(cli: Cli) {
-    let log_level = if cli.verbose {
-        LevelFilter::Info
-    } else if cli.debug {
-        LevelFilter::Trace
-    } else {
-        LevelFilter::Warn
-    };
-
-    SimpleLogger::new().with_level(log_level).init().unwrap();
-
-    trace!("unified_context: {}", &cli.unified_context);
-    if !cli.remaining_args.is_empty() {
-        trace!("remaining_args: {:?}", &cli.remaining_args);
-    }
-    if cli.verbose {
-        info!("Verbose mode enabled.");
-    }
-    if cli.debug {
-        trace!("Debug mode enabled.");
-    }
+    setup_logging(&cli);
 
     if cli.show_system_prompt {
         // Indent the each line of the prompt by two spaces
