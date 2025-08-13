@@ -185,9 +185,9 @@ pub fn run(cli: Cli) {
         let mut new_git_args: Vec<String> = vec![];
         let git_args_split: Vec<&str> = git_args.split_whitespace().collect();
         for git_arg in git_args_split.iter() {
-            if Regex::new(r"^-U[0-9]+$").unwrap().is_match(git_arg) {
+            if git_arg.starts_with("-U") {
                 new_git_args.push(format!("-U{}", reduced_context));
-            } else if Regex::new(r"^--unified=[0-9]+$").unwrap().is_match(git_arg) {
+            } else if git_arg.starts_with("--unified=") {
                 new_git_args.push(format!("--unified={}", reduced_context));
             } else {
                 new_git_args.push(git_arg.to_string());
