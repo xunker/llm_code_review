@@ -223,12 +223,12 @@ pub fn run(cli: Cli) {
         .and_then(|s| OutputFormat::from_str(s));
     if let Some(output_format) = format {
         prompt = prompt.to_owned()
-            + &format!("\nOutput the review in {:?} format.\n", output_format).to_string();
+            + &format!("\nOutput the review in {:?} format.\n", output_format);
     }
 
     // Add the additional context if provided
     if let Some(ctx) = &cli.context {
-        prompt = prompt.to_owned() + &format!("\n## Additional Context\n{}\n", ctx).to_string();
+        prompt = prompt.to_owned() + &format!("\n## Additional Context\n{}\n", ctx);
     }
 
     let assembled_review_prompt = format!("{}\n\n# PR Code\n\n{}", prompt, diff_output);
