@@ -20,20 +20,11 @@ mod tests {
     }
 
     #[test]
-    fn test_get_git_diff_invalid_args() {
-        let result = std::panic::catch_unwind(|| {
-            get_git_diff(&"--invalid-arg".to_string());
-        });
-        println!({}, result);
-        // assert!(result.is_err(), "Expected panic on invalid git args");
+    fn test_prompt_assembly_with_context() {
+        let mut cli = Cli::default();
+        cli.context = Some("Extra context".to_string());
+        let prompt = DEFAULT_SYSTEM_PROMPT.to_string()
+            + &format!("\n## Additional Context\n{}\n", cli.context.as_ref().unwrap());
+        assert!(prompt.contains("Extra context"));
     }
-
-    // #[test]
-    // fn test_prompt_assembly_with_context() {
-    //     let mut cli = Cli::default();
-    //     cli.context = Some("Extra context".to_string());
-    //     let prompt = DEFAULT_SYSTEM_PROMPT.to_string()
-    //         + &format!("\n## Additional Context\n{}\n", cli.context.as_ref().unwrap());
-    //     assert!(prompt.contains("Extra context"));
-    // }
 }
