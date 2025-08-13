@@ -14,4 +14,4 @@ Please review this PR as if you were a senior engineer.
 - Identify issues and improvement opportunities (ordered by priority)
 - Provide specific code examples for suggested changes where applicable
 
-Please be specific, constructive, and actionable in your feedback. Output the review in markdown format.
+Please be specific, constructive, and actionable in your feedback.

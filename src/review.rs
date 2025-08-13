@@ -1,4 +1,5 @@
 use clap::{ArgAction, Parser};
+use clap::builder::PossibleValuesParser;
 #[allow(unused_imports)]
 use log::{debug, error, info, trace, warn, LevelFilter};
 use regex::Regex;
@@ -39,6 +40,10 @@ pub struct Cli {
     /// Print the current default system prompt and exit
     #[arg(short = 'S', long = "show-system-prompt", action = ArgAction::SetTrue)]
     pub show_system_prompt: bool,
+
+    /// Request review output be in a specific format
+    #[arg(short = 'F', long = "output-format", value_name = "FORMAT", value_parser = PossibleValuesParser::new(["markdown", "asciidoc", "mediawiki"]))]
+    pub output_format: Option<String>,
 
     /// Number of lines given as context to the LLM
     #[arg(short = 'U', long = "unified", default_value_t = 3)]
@@ -191,6 +196,10 @@ pub fn run(cli: Cli) {
 
     if let Some(custom_system_prompt) = &cli.system_prompt {
         prompt = custom_system_prompt.to_string();
+    }
+
+    if let Some(output_format) = &cli.output_format {
+        prompt = prompt .to_owned() + &format!("\nOutput the review in {} format.\n", output_format).to_string();
     }
 
     // Add the additional context if provided
