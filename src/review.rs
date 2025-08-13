@@ -155,6 +155,34 @@ fn reduce_context_if_needed(
     Some(new_git_args)
 }
 
+fn build_prompt(cli: &Cli, diff: &str) -> String {
+    let mut prompt = cli
+        .system_prompt
+        .clone()
+        .unwrap_or_else(|| DEFAULT_SYSTEM_PROMPT.to_string());
+
+    // Append output format instructions
+    if let Some(format_str) = &cli.output_format {
+        if let Some(output_format) = OutputFormat::from_str(format_str) {
+            prompt.push_str(&format!(
+                "\nOutput the review in {:?} format.\n",
+                output_format
+            ));
+        }
+    }
+
+    // Append additional context
+    if let Some(ctx) = &cli.context {
+        prompt.push_str(&format!("\n## Additional Context\n{}\n", ctx));
+    }
+
+    // Append the diff content
+    prompt.push_str("\n\n# PR Code\n\n");
+    prompt.push_str(diff);
+
+    prompt
+}
+
 pub fn run(cli: Cli) {
     let log_level = if cli.verbose {
         LevelFilter::Info
@@ -212,27 +240,5 @@ pub fn run(cli: Cli) {
         diff_output = get_git_diff(&new_args.join(" "));
     }
 
-    let mut prompt = DEFAULT_SYSTEM_PROMPT.to_string();
-
-    if let Some(custom_system_prompt) = &cli.system_prompt {
-        prompt = custom_system_prompt.to_string();
-    }
-
-    // Add instructions about the output format to the end of the main prompt
-    let format = &cli
-        .output_format
-        .as_ref()
-        .and_then(|s| OutputFormat::from_str(s));
-    if let Some(output_format) = format {
-        prompt.push_str(&format!("\nOutput the review in {:?} format.\n", output_format));
-    }
-
-    // Add the additional context if provided
-    if let Some(ctx) = &cli.context {
-        prompt.push_str(&format!("\n## Additional Context\n{}\n", ctx));
-    }
-
-    let assembled_review_prompt = format!("{}\n\n# PR Code\n\n{}", prompt, diff_output);
-
-    println!("{}", assembled_review_prompt);
+    println!("{}", build_prompt(&cli, &diff_output));
 }
