@@ -66,6 +66,24 @@ pub struct Cli {
     remaining_args: Vec<String>,
 }
 
+#[derive(Debug)]
+enum OutputFormat {
+    Markdown,
+    AsciiDoc,
+    MediaWiki,
+}
+
+impl OutputFormat {
+    fn from_str(s: &str) -> Option<Self> {
+        match s {
+            "markdown" => Some(OutputFormat::Markdown),
+            "asciidoc" => Some(OutputFormat::AsciiDoc),
+            "mediawiki" => Some(OutputFormat::MediaWiki),
+            _ => None,
+        }
+    }
+}
+
 pub fn get_git_diff(git_args: &String) -> String {
     let mut command_binding = Command::new("git");
     let command = command_binding.arg("diff");
@@ -198,8 +216,10 @@ pub fn run(cli: Cli) {
         prompt = custom_system_prompt.to_string();
     }
 
-    if let Some(output_format) = &cli.output_format {
-        prompt = prompt .to_owned() + &format!("\nOutput the review in {} format.\n", output_format).to_string();
+    // Add instructions about the output format to the end of the main prompt
+    let format = &cli.output_format.as_ref().and_then(|s| OutputFormat::from_str(s));
+    if let Some(output_format) = format {
+        prompt = prompt.to_owned() + &format!("\nOutput the review in {:?} format.\n", output_format).to_string();
     }
 
     // Add the additional context if provided
