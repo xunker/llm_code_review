@@ -134,6 +134,7 @@ pub fn run(cli: Cli) {
     }
 
     if cli.show_system_prompt {
+        // Indent the each line of the prompt by two spaces
         println!(
             "Default System Prompt:\n\n{}",
             Regex::new(r"(?m)^")
@@ -222,13 +223,12 @@ pub fn run(cli: Cli) {
         .as_ref()
         .and_then(|s| OutputFormat::from_str(s));
     if let Some(output_format) = format {
-        prompt = prompt.to_owned()
-            + &format!("\nOutput the review in {:?} format.\n", output_format);
+        prompt.push_str(&format!("\nOutput the review in {:?} format.\n", output_format));
     }
 
     // Add the additional context if provided
     if let Some(ctx) = &cli.context {
-        prompt = prompt.to_owned() + &format!("\n## Additional Context\n{}\n", ctx);
+        prompt.push_str(&format!("\n## Additional Context\n{}\n", ctx));
     }
 
     let assembled_review_prompt = format!("{}\n\n# PR Code\n\n{}", prompt, diff_output);
