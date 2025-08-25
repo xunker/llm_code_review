@@ -2,18 +2,10 @@ use clap::builder::PossibleValuesParser;
 use clap::{ArgAction, Parser};
 #[allow(unused_imports)]
 use log::{debug, error, info, trace, warn, LevelFilter};
+// Rust log levels: Error = 1, Warn = 2, Info = 3, Debug = 4, Trace = 5
 use regex::Regex;
 use simple_logger::SimpleLogger;
 use std::process::{self, Command}; // Import the logging macros
-                                   /*
-                                       Rust log levels:
-
-                                           Error = 1,
-                                           Warn = 2,
-                                           Info = 3,
-                                           Debug = 4,
-                                           Trace = 5,
-                                   */
 
 // I wish there were a simple consistent method to count tokens, but there isn't
 // as far as I can tell, so we're gonna use a poor estimation and keep safely

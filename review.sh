@@ -1,8 +1,13 @@
 #!/usr/bin/env bash
 #
-# Regenerates a Code Review prompt that works with the web-hosted version of Synaptic Suite.
+# Generates a Code Review prompt that works with any AI/LLMs that can operate
+# through a "text chat" style interface.
 #
-# Based on origin at https://github.com/llimllib/personal_code/blob/master/homedir/.local/bin/review
+# Based on original at
+# https://github.com/llimllib/personal_code/blob/master/homedir/.local/bin/review
+#
+# LICENSE: unlicense. This is free and unencumbered software released into the
+# public domain. See unlicense.org for full license.
 set -euo pipefail
 
 default_system_prompt="Please review this PR as if you were a senior engineer.
