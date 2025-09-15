@@ -47,6 +47,7 @@ Review Examples:
 
   # Review with additional context
   review --context "Focus your review on possible authentication bypasses"
+  llm_code_review --context "This is a Rails 8 app, running inside Microsoft Azure."
 
   # Review with context from a file
   review --context "\$(cat PR_DESCRIPTION.md)"
