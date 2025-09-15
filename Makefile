@@ -16,18 +16,23 @@ else
 endif
 
 build:
-	cargo build $(release)
+  cargo build $(release)
 
 install:
-	cp target/$(target)/$(prog) ~/bin/$(prog)-$(extension)
+  cp target/$(target)/$(prog) ~/bin/$(prog)-$(extension)
 
 test:
-	cargo test
+  cargo test
 
 clean:
-	cargo clean
+  cargo clean
+
+# So you can do `make debug` instead of `debug=debug make` or  `cargo build`
+# if you prefer that.
+debug:
+  cargo build # --debug` is the default for `cargo build`
 
 all: build install
 
 help:
-	@echo "usage: make $(prog) [debug=1]"
+  @echo "usage: make $(prog) [debug=1]"
