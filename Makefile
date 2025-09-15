@@ -25,8 +25,7 @@ test:
 	cargo test
 
 clean:
-	@echo "removing ./target directory"
-	rm -rf ./target
+	cargo clean
 
 all: build install
 
