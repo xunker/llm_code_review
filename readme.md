@@ -17,7 +17,6 @@ Mill. It is found in [`review.sh`](/.review.sh) in this repo.
 - [LLM Code Review](#llm-code-review)
 - [Table of Contents](#table-of-contents)
   - [Bash Script Version](#bash-script-version)
-  - [Table of Contents](#table-of-contents)
   - [Rust Version](#rust-version)
     - [Building](#building)
     - [Installing](#installing)
@@ -88,10 +87,6 @@ Dot Notation:
 Depends on:
 - bat: https://github.com/sharkdp/bat (optional)
 ```
-
-## Table of Contents
-
-- [Rust Version](#rust-version)
 
 ## Rust Version
 
