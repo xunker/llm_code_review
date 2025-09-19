@@ -6,9 +6,9 @@ A model-agnostic way to prepare a code review for an AI/LLM. Very alpha quality.
 
 Based on [an original script](https://github.com/llimllib/personal_code/blob/master/homedir/.local/bin/review) by Bill Mill.
 
-
-There are two versions available here. One is a Bash script, a modification of the original by Bill
-Mill. It is found in [`review.sh`](/.review.sh) in this repo.
+There are two versions available here. The first is [written in rust](#rust-version), and is the recommended tool to
+use. The other is a [Bash script](#bash-script-version) which is
+unlikely to be updated further.
 
 # Table of Contents
 
@@ -29,7 +29,10 @@ Mill. It is found in [`review.sh`](/.review.sh) in this repo.
 
 ## Bash Script Version
 
-Run `review.sh --help` to see usage details.
+This is a modification of the original by Bill Mill. It is found in [`review.sh`](/.review.sh) in
+this repo. Run `review.sh --help` to see usage details.
+
+This tool is unlikely to be updated any further, the [rust version](#rust-version) is recommended instead.
 
 ```
 review [--verbose] [--context TEXT] [--help] [git-diff-arguments...]
@@ -90,14 +93,20 @@ Depends on:
 
 ## Rust Version
 
-A Rust 2024 version is found in `src/`. This is a work-in-progress.
+A Rust 2024 version is found in `src/`. This is the tool currently in development in this repo.
 
 ### Building
 
-First, install Rust. On MacOS, it's easy with Homebrew: `brew install rust`.
+First, install Rust.
+* MacOS: homebrew is recommended: `brew install rust`.
+* Linux: either [rustup](https://www.rust-lang.org/tools/install) or LinuxBrew using `brew
+  install rust`
+* Windows: [Standaone installer](https://forge.rust-lang.org/infra/other-installation-methods.html#standalone)
 
 To build a standard "release" executable, then run `make`. This will build an executable as
 `target/release/llm_code_review`.
+
+Run `target/release/llm_code_review --help` and you should see the usage details.
 
 ### Installing
 
